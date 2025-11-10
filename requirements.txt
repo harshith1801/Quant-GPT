@@ -1,0 +1,8 @@
+streamlit
+google-generativeai
+python-dotenv
+requests
+pandas
+altair
+pinecone
+sentence-transformers
