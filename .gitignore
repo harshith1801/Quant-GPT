@@ -1,0 +1,16 @@
+Ignore the secret API keys file
+
+.env
+
+Ignore Python cache files
+
+pycache/
+*.pyc
+
+Ignore large data/helper files
+
+We don't need these in the main repo
+
+sec_filings/
+processed_chunks.json
+*upload_to_pinecone.py
