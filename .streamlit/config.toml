@@ -1,0 +1,4 @@
+[server]
+# Avoid introspecting Transformers lazy modules and importing unused vision models.
+# Restart Streamlit after code changes instead of automatic file watching.
+fileWatcherType = "none"

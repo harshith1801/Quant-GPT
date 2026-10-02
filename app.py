@@ -32,12 +32,10 @@ st.set_page_config(
 )
 
 # --- 2. CACHED DATA FUNCTIONS ---
-@st.cache_data(ttl=900, show_spinner="Fetching real-time stock data...")
 def cached_get_stock_data(ticker):
     """Cached function to get stock data."""
     return get_stock_data(ticker)
 
-@st.cache_data(ttl=900, show_spinner="Fetching real-time news & sentiment...")
 def cached_get_news_and_sentiment(ticker):
     """Cached function to get news and sentiment."""
     return get_news_and_sentiment(ticker)
@@ -79,7 +77,7 @@ with st.sidebar:
     st.subheader("Enter Your Query")
     query_text = st.text_area(
         "Ask a question based on market data, news, and 10-K filings:",
-        placeholder="e.g., What are the main risks for this company and how do they relate to today's news?",
+        placeholder="e.g., What are the main risks for this company and how do they relate to available news?",
         height=150,
         key="query"
     )
@@ -87,7 +85,7 @@ with st.sidebar:
     submit_button = st.button("Analyze", type="primary", use_container_width=True)
     
     st.markdown("---")
-    st.caption("Built by Harshith Chejerla | Powered by Google Gemini and Alpha Vantage.")
+    st.caption("Built by Harshith Chejerla | Powered by Groq and Alpha Vantage.")
 
 # --- 4. MAIN PAGE (DISPLAY) ---
 st.header(f"Analysis: {ticker1}{' vs. ' + ticker2 if analysis_type == 'Compare Tickers' and ticker2 else ''}")
@@ -98,7 +96,7 @@ if submit_button:
         st.warning("Please enter a query in the sidebar to begin analysis.")
     else:
         # --- Data Fetching ---
-        with st.spinner("Fetching real-time data and searching archives... Please wait."):
+        with st.spinner("Fetching daily closes, news and filing evidence... Please wait."):
             
             stock1_quote, stock1_chart_data = cached_get_stock_data(ticker1)
             news1 = cached_get_news_and_sentiment(ticker1)
@@ -123,11 +121,11 @@ if submit_button:
         with st.spinner("🤖 AI is synthesizing insights..."):
             try:
                 # Check for failed data fetches
-                if (data_payload.get('stock1_quote') is None) or \
-                   (analysis_type == "Compare Tickers" and data_payload.get('stock2_quote') is None):
-                    st.error("Error: Could not retrieve market data. AI analysis may be incomplete.")
-                    if data_payload.get('stock1_quote') is None: data_payload['stock1_quote'] = {'price': 0, 'change_percent_str': 'N/A', 'volume': 0}
-                    if analysis_type == "Compare Tickers" and data_payload.get('stock2_quote') is None: data_payload['stock2_quote'] = {'price': 0, 'change_percent_str': 'N/A', 'volume': 0}
+                # Preserve explicit unavailable status; never invent a zero-dollar quote.
+                if not (stock1_quote or {}).get('available', False):
+                    st.error(f"Daily-close data unavailable: {(stock1_quote or {}).get('status', 'api_error')}")
+                if ticker2 and not (data_payload.get('stock2_quote') or {}).get('available', False):
+                    st.error(f"Daily-close data unavailable for {ticker2}.")
 
                 master_insight = generate_master_insight(query_text, analysis_type, data_payload)
             except Exception as e:
@@ -145,7 +143,7 @@ if submit_button:
 
                 # --- NEW NEWS DISPLAY ---
                 # This section is updated to read the Alpha Vantage format
-                st.subheader(f"Today's News & Sentiment: {ticker1}")
+                st.subheader(f"News & Sentiment: {ticker1}")
                 st.markdown(f"**Overall Sentiment:** *{news1.get('overall_sentiment_label', 'N/A')}*")
                 for article in news1.get('articles', []):
                     with st.expander(f"**{article.get('sentiment_label', 'N/A')}** | {article.get('title', 'No Title')}"):
@@ -155,7 +153,7 @@ if submit_button:
                 
                 if analysis_type == "Compare Tickers" and ticker2:
                     st.divider()
-                    st.subheader(f"Today's News & Sentiment: {ticker2}")
+                    st.subheader(f"News & Sentiment: {ticker2}")
                     st.markdown(f"**Overall Sentiment:** *{news2.get('overall_sentiment_label', 'N/A')}*")
                     for article in news2.get('articles', []):
                         with st.expander(f"**{article.get('sentiment_label', 'N/A')}** | {article.get('title', 'No Title')}"):
@@ -209,13 +207,13 @@ if submit_button:
 
             with col2:
                 st.header(f"📊 Market Data: {ticker1}")
-                if stock1_quote:
+                if stock1_quote and stock1_quote.get('available', False):
                     metric_col1, metric_col2 = st.columns(2)
-                    metric_col1.metric("Latest Price", f"${stock1_quote.get('price', 0):.2f}")
+                    metric_col1.metric(f"Daily close ({stock1_quote['date']})", f"${stock1_quote['price']:.2f}")
                     metric_col2.metric("Change", stock1_quote.get('change_percent_str', 'N/A'), 
                                       delta=stock1_quote.get('change_percent_str'))
                 else:
-                    st.error(f"Could not load real-time quote for {ticker1}.")
+                    st.error(f"Could not load daily-close data for {ticker1}.")
 
                 if not stock1_chart_data.empty:
                     # --- FINAL CHART FIX ---
@@ -265,13 +263,13 @@ if submit_button:
                 if analysis_type == "Compare Tickers" and ticker2:
                     st.divider()
                     st.header(f"📊 Market Data: {ticker2}")
-                    if stock2_quote:
+                    if stock2_quote and stock2_quote.get('available', False):
                         metric_col3, metric_col4 = st.columns(2)
-                        metric_col3.metric("Latest Price", f"${stock2_quote.get('price', 0):.2f}")
+                        metric_col3.metric(f"Daily close ({stock2_quote['date']})", f"${stock2_quote['price']:.2f}")
                         metric_col4.metric("Change", stock2_quote.get('change_percent_str', 'N/A'),
                                           delta=stock2_quote.get('change_percent_str'))
                     else:
-                        st.error(f"Could not load real-time quote for {ticker2}.")
+                        st.error(f"Could not load daily-close data for {ticker2}.")
 
                     if not stock2_chart_data.empty:
                         # --- FINAL CHART FIX (for Ticker 2) ---
