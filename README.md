@@ -1,6 +1,6 @@
 ---
 title: Quant GPT
-emoji: ◇
+emoji: 📊
 colorFrom: gray
 colorTo: blue
 sdk: docker
