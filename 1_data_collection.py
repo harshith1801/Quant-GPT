@@ -1,43 +1,48 @@
-# 1_data_collection.py
-# This script will download the latest 10-K (annual) and 10-Q (quarterly) filings for Apple, Microsoft, and NVIDIA.
+"""Download annual and quarterly SEC submissions, with an optional ticker filter."""
 
-from sec_edgar_downloader import Downloader
+import argparse
+from datetime import date
 import os
+from pathlib import Path
 
-def download_sec_filings():
-    """
-    Initializes the downloader and fetches the latest SEC filings for specified tickers.
-    """
-    save_path = "sec_filings"
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-        print(f"Created directory: {save_path}")
+from dotenv import load_dotenv
+from sec_edgar_downloader import Downloader
 
-    dl = Downloader("Harshith Chejerla", "harshith.chejerla@gmail.com", save_path)
-    
-    # List of tickers for the companies we are interested in as of now
-    tickers = ["AAPL", "MSFT", "NVDA"]
+DEFAULT_ROOT = Path(__file__).resolve().parent / "sec_filings"
 
-    print("Starting download of SEC filings...")
 
-    for ticker in tickers:
-        try:
-            print(f"Downloading 10-K filings for {ticker}...")
-            dl.get("10-K", ticker, limit=5)
-            
-            print(f"Downloading 10-Q filings for {ticker}...")
-            dl.get("10-Q", ticker, limit=5)
-            
-            print(f"Successfully downloaded filings for {ticker}.")
-        except Exception as e:
-            print(f"Could not download filings for {ticker}. Error: {e}")
-
-    print("\nAll downloads complete.")
-    print(f"Filings are saved in the '{save_path}' directory.")
+def download_sec_filings(tickers=("AAPL", "MSFT", "NVDA"), limit=5, save_path=DEFAULT_ROOT):
+    if limit < 1:
+        raise ValueError("The filing limit must be positive.")
+    load_dotenv()
+    save_path = Path(save_path).resolve()
+    save_path.mkdir(parents=True, exist_ok=True)
+    downloader = Downloader(
+        os.getenv("SEC_COMPANY_NAME", "Harshith Chejerla"),
+        os.getenv("SEC_EMAIL", "harshith.chejerla@gmail.com"),
+        save_path,
+    )
+    counts = {}
+    for ticker in sorted({ticker.upper() for ticker in tickers}):
+        for filing_type in ("10-K", "10-Q"):
+            print(f"Downloading latest {limit} {filing_type} filings for {ticker}...", flush=True)
+            count = downloader.get(
+                filing_type, ticker, limit=limit, before=date.today(), include_amends=False
+            )
+            counts[f"{ticker}/{filing_type}"] = count
+            if count != limit:
+                raise RuntimeError(
+                    f"Only {count}/{limit} {ticker} {filing_type} filings available locally. "
+                    "Check download errors or request a smaller limit."
+                )
+    print(f"Complete: {sum(counts.values())} filings downloaded or already present in {save_path}")
+    return counts
 
 
 if __name__ == "__main__":
-    download_sec_filings()
-
-
-# END
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--tickers", nargs="+", default=["AAPL", "MSFT", "NVDA"])
+    parser.add_argument("--limit", type=int, default=5, help="Filings per ticker and form")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_ROOT)
+    args = parser.parse_args()
+    download_sec_filings(args.tickers, args.limit, args.output_dir)

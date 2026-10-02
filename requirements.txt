@@ -1,8 +1,14 @@
 streamlit
-google-generativeai
+groq
 python-dotenv
 requests
 pandas
 altair
 pinecone
 sentence-transformers
+sec-edgar-downloader>=5.1,<6
+beautifulsoup4>=4.12,<5
+langchain-text-splitters>=1,<2
+tqdm
+fastapi>=0.115,<1
+uvicorn>=0.34,<1

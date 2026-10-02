@@ -1,16 +1,53 @@
-Ignore the secret API keys file
-
+# Local credentials (keep the empty configuration template)
 .env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+credentials.json
 
-Ignore Python cache files
+# Python environments and generated caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
 
-pycache/
-*.pyc
+# JavaScript dependencies, package caches, and build output
+node_modules/
+.pnpm-store/
+.npm/
+dist/
+build/
+*.tsbuildinfo
 
-Ignore large data/helper files
-
-We don't need these in the main repo
-
+# Downloaded filings, generated datasets, and local databases
 sec_filings/
-processed_chunks.json
-*upload_to_pinecone.py
+processed_chunks*.json
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.sqlite*-wal
+*.sqlite*-shm
+.cache/
+
+# Local tooling, validation artifacts, and machine-specific files
+.codex/
+.agents/
+.DS_Store
+.idea/
+.vscode/
+*.log
+*.tmp
+/tmp/
+/private/
+/validation_outputs/
+chroma_db/
